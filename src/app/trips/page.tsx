@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { fetchTrips, Trip } from "@/src/lib/db";
+import { fetchTrips, Trip } from "@/lib/db";
 import Link from "next/link";
-import { TopBar } from "@/src/components/TopBar";
+import { TopBar } from "@/components/TopBar";
 
 export default function TripsPage() {
   const [trips, setTrips] = useState<Trip[]>([]);

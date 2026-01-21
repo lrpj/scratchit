@@ -13,24 +13,21 @@ export type Trip = {
 export async function fetchVisitedCountries() {
   const { data, error } = await supabase
     .from("visited_countries")
-    .select("iso3, first_visited_at, notes")
-    .order("iso3");
+    .select("code");
   if (error) throw error;
   return data ?? [];
 }
 
-export async function toggleVisitedCountry(iso3: string, makeVisited: boolean) {
+export async function toggleVisitedCountry(code: string, makeVisited: boolean) {
   if (makeVisited) {
-    const { error } = await supabase.from("visited_countries").upsert({
-      iso3,
-      first_visited_at: new Date().toISOString().slice(0, 10),
-    });
+    const { error } = await supabase.from("visited_countries").upsert({ code });
     if (error) throw error;
-    return;
+  } else {
+    const { error } = await supabase.from("visited_countries").delete().eq("code", code);
+    if (error) throw error;
   }
-  const { error } = await supabase.from("visited_countries").delete().eq("iso3", iso3);
-  if (error) throw error;
 }
+
 
 export async function fetchTrips() {
   const { data, error } = await supabase
@@ -66,7 +63,7 @@ export async function createTrip(input: {
 
   const countries = (input.countries ?? []).filter(Boolean);
   if (countries.length) {
-    const rows = countries.map((iso3) => ({ trip_id: trip.id, iso3 }));
+    const rows = countries.map((iso2) => ({ trip_id: trip.id, iso2 }));
     const { error: joinError } = await supabase.from("trip_countries").insert(rows);
     if (joinError) throw joinError;
   }

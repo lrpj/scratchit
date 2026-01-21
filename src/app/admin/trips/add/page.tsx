@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { createTrip } from "@/src/lib/db";
-import { supabase } from "@/src/lib/supabaseClient";
-import { isAdminUser } from "@/src/lib/auth";
+import { createTrip } from "@/lib/db";
+import { supabase } from "@/lib/supabaseClient";
+import { isAdminUser } from "@/lib/auth";
 
 export default function NewTripPage() {
   const [title, setTitle] = useState("");

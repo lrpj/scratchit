@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { fetchTrips, uploadPhotoToTrip } from "@/src/lib/db";
-import { supabase } from "@/src/lib/supabaseClient";
-import { isAdminUser } from "@/src/lib/auth";
+import { fetchTrips, uploadPhotoToTrip } from "@/lib/db";
+import { supabase } from "@/lib/supabaseClient";
+import { isAdminUser } from "@/lib/auth";
 
 export default function UploadPhotosPage() {
   const [allowed, setAllowed] = useState(false);

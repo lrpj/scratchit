@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { fetchTripById, getPrivatePhotoUrl } from "@/src/lib/db";
-import { TopBar } from "@/src/components/TopBar";
+import { fetchTripById, getPrivatePhotoUrl } from "@/lib/db";
+import { TopBar } from "@/components/TopBar";
 
 export default function TripDetailPage({ params }: { params: { id: string } }) {
   const [data, setData] = useState<any>(null);

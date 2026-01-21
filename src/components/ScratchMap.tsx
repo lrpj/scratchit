@@ -1,18 +1,18 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { fetchVisitedCountries, toggleVisitedCountry } from "../lib/db";
-import { supabase } from "../lib/supabaseClient";
-import { isAdminUser } from "../lib/auth";
+import { fetchVisitedCountries, toggleVisitedCountry } from "@/lib/db";
+import { supabase } from "@/lib/supabaseClient";
+import { isAdminUser } from "@/lib/auth";
 
-type Visited = { iso3: string };
+type Visited = { code: string };
 
 export function ScratchMap() {
   const [visited, setVisited] = useState<Visited[]>([]);
   const [loading, setLoading] = useState(true);
   const [canEdit, setCanEdit] = useState(false);
 
-  const visitedSet = useMemo(() => new Set(visited.map((v) => v.iso3)), [visited]);
+  const visitedSet = useMemo(() => new Set(visited.map((v) => v.code)), [visited]);
 
   useEffect(() => {
     let mounted = true;
@@ -25,7 +25,7 @@ export function ScratchMap() {
 
       if (session) {
         const rows = await fetchVisitedCountries();
-        if (mounted) setVisited(rows.map((r) => ({ iso3: r.iso3 })));
+        if (mounted) setVisited(rows.map((r) => ({ code: r.code })));
       } else {
         if (mounted) setVisited([]);
       }
@@ -42,22 +42,28 @@ export function ScratchMap() {
     };
   }, []);
 
-  async function onCountryClick(iso3: string) {
-    if (!canEdit) return;
-    const isVisited = visitedSet.has(iso3);
+async function onCountryClick(code: string) {
+  if (!canEdit) return;
 
-    setVisited((prev) =>
-      isVisited ? prev.filter((x) => x.iso3 !== iso3) : [...prev, { iso3 }]
-    );
+  const isVisited = visitedSet.has(code);
 
-    try {
-      await toggleVisitedCountry(iso3, !isVisited);
-    } catch (e) {
-      setVisited((prev) => prev);
-      console.error(e);
-      alert("Could not update visited countries. Check that you are logged in.");
-    }
+  // optimistic UI update
+  setVisited((prev) =>
+    isVisited ? prev.filter((x) => x.code !== code) : [...prev, { code }]
+  );
+
+  try {
+    await toggleVisitedCountry(code, !isVisited);
+  } catch (e) {
+    console.error(e);
+    alert("Could not update visited countries. Check that you are logged in.");
+
+    // reload from DB to recover correct state
+    const rows = await fetchVisitedCountries();
+    setVisited(rows.map((r: any) => ({ code: r.code })));
   }
+}
+
 
   return (
     <div className="w-full">
@@ -83,12 +89,12 @@ function WorldSvg({
   onCountryClick,
 }: {
   visitedSet: Set<string>;
-  onCountryClick: (iso3: string) => void;
+  onCountryClick: (code: string) => void;
 }) {
   const [svgText, setSvgText] = useState<string>("");
 
   useEffect(() => {
-    fetch("/world-iso3.svg")
+    fetch("/world.svg")
       .then((r) => r.text())
       .then(setSvgText)
       .catch(() => setSvgText(""));
@@ -96,29 +102,34 @@ function WorldSvg({
 
   if (!svgText) return <div className="text-sm text-gray-600">Map asset missing.</div>;
 
+  // Style whole country groups based on <g id="XX"> where XX is ISO2.
+  // This SVG uses uppercase <g id="AM"> etc. We attach data-iso2 and a style.
   const enhanced = svgText
-    .replaceAll("<svg", `<svg class="w-full h-auto select-none"`)
-    .replaceAll(
-      /<path([^>]*?)id="([A-Z]{3})"([^>]*?)>/g,
-      (_m, a, iso3, b) => {
-        const isVisited = visitedSet.has(iso3);
-        const baseStyle =
-          "cursor:pointer;transition:fill 120ms ease;stroke:#9CA3AF;stroke-width:0.5;";
-        const fill = isVisited ? "fill:#111827;" : "fill:#F3F4F6;";
-        const hover = "opacity:0.95;";
-        return `<path${a}id="${iso3}"${b} style="${baseStyle}${fill}" data-hover="${hover}">`;
-      }
-    );
+    .replace(/<svg\b([^>]*)>/i, `<svg $1 class="w-full h-auto select-none">`)
+    .replace(/<g id="([A-Z]{2})"\b([^>]*)>/g, (_m, iso2, rest) => {
+      const isVisited = visitedSet.has(iso2);
+      const style = [
+        "cursor:pointer",
+        "transition:opacity 120ms ease",
+        // “scratch” effect: visited darker, unvisited lighter
+        isVisited ? "opacity:1" : "opacity:0.35",
+      ].join(";");
+
+      // Add a data attribute so we can detect clicks even if inner paths are clicked
+      return `<g id="${iso2}" data-iso2="${iso2}" ${rest} style="${style}">`;
+    });
 
   return (
     <div
       className="rounded-xl border bg-white p-3 overflow-hidden"
       onClick={(e) => {
-        const t = e.target as HTMLElement | null;
-        const id = t?.getAttribute?.("id");
-        if (id && /^[A-Z]{3}$/.test(id)) onCountryClick(id);
+        const el = e.target as HTMLElement | null;
+        const g = el?.closest?.("g[data-iso2]") as HTMLElement | null;
+        const iso2 = g?.getAttribute("data-iso2");
+        if (iso2) onCountryClick(iso2);
       }}
       dangerouslySetInnerHTML={{ __html: enhanced }}
     />
   );
 }
+
