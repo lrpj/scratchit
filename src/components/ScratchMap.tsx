@@ -5,6 +5,7 @@ import { fetchVisitedCountries, toggleVisitedCountry } from "@/lib/db";
 import { supabase } from "@/lib/supabaseClient";
 import { isAdminUser } from "@/lib/auth";
 
+
 type Visited = { code: string };
 
 export function ScratchMap() {
